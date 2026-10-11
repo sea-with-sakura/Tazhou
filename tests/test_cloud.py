@@ -102,6 +102,17 @@ class CloudTest(unittest.IsolatedAsyncioTestCase):
         socket=await self.client.ws_connect(f'/panel/{self.node}/ws');await socket.send_str('terminal-data');message=await socket.receive(timeout=3);self.assertEqual(message.data,'terminal-data')
         await self.client.post('/api/logout',json={},headers={'X-CSRF-Token':self.csrf});message=await socket.receive(timeout=3);self.assertIn(message.type,[WSMsgType.CLOSE,WSMsgType.CLOSED]);await socket.close()
 
+    async def test_account_update_closes_panel_websocket_and_revokes_access(self):
+        await self.enter()
+        socket=await self.client.ws_connect(f'/panel/{self.node}/ws')
+        await socket.send_str('before-update')
+        self.assertEqual((await socket.receive(timeout=3)).data,'before-update')
+        response=await self.client.put('/api/account',json={'username':'operator','current_password':'testing-password','new_password':'replacement-password','confirm_password':'replacement-password'},headers={'X-CSRF-Token':self.csrf})
+        self.assertEqual(response.status,200)
+        message=await socket.receive(timeout=3)
+        self.assertIn(message.type,[WSMsgType.CLOSE,WSMsgType.CLOSED]);await socket.close()
+        self.assertEqual((await self.client.get(f'/panel/{self.node}/login')).status,401)
+
     async def test_two_node_cookie_isolation_and_legacy_redirect(self):
         second=self.cloud.store.add({'name':'second','url':str(self.upstream.make_url('')).replace('127.0.0.1','localhost').rstrip('/'),'api_key':'secret-key'})
         await self.enter()

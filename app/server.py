@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import secrets
+import re
 import ssl
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -43,6 +45,8 @@ class Cloud:
         self.client = None
         self.collect_lock = asyncio.Lock()
         self.attempts = {}
+        self.account_attempts = {}
+        self.auth_lock = asyncio.Lock()
         self.proxy_sockets = {}
         from .alerting import Alerting
         self.alerting = Alerting(self.store, self.interval, self.origin(None))
@@ -145,12 +149,15 @@ class Cloud:
             raise web.HTTPTooManyRequests(text='登录尝试过多，请稍后再试')
         data = await request.json()
         self.attempts[ip].append(now)
-        match = await asyncio.to_thread(password_hash,str(data.get('password','')),self.config['password_salt'])
-        if data.get('username') != self.config['username'] or not hmac.compare_digest(match,self.config['password_hash']):
-            raise web.HTTPUnauthorized(text='用户名或密码错误')
-        self.attempts.pop(ip,None)
-        token, csrf=secrets.token_urlsafe(32), secrets.token_urlsafe(24)
-        self.store.db.execute('INSERT INTO sessions VALUES(?,?,?)',(token,now+28800,csrf));self.store.db.commit()
+        password = data.get('password', '')
+        if not isinstance(password, str) or len(password) > 1024:raise ValueError('密码格式无效')
+        async with self.auth_lock:
+            match = await asyncio.to_thread(password_hash,password,self.config['password_salt'])
+            if data.get('username') != self.config['username'] or not hmac.compare_digest(match,self.config['password_hash']):
+                raise web.HTTPUnauthorized(text='用户名或密码错误')
+            self.attempts.pop(ip,None)
+            token, csrf=secrets.token_urlsafe(32), secrets.token_urlsafe(24)
+            self.store.db.execute('INSERT INTO sessions VALUES(?,?,?)',(token,now+28800,csrf));self.store.db.commit()
         response=web.json_response({'csrf':csrf,'username':self.config['username']})
         response.set_cookie('baotaer_session',token,httponly=True,secure=self.origin(request).startswith('https:'),samesite='Strict',max_age=28800,path='/')
         self.store.audit('login')
@@ -158,6 +165,65 @@ class Cloud:
 
     async def me(self, request):
         return web.json_response({'username':self.config['username'],'csrf':self.session(request)['csrf'],'origin':self.origin(request),'interval':self.interval})
+
+    async def update_account(self, request):
+        data = await request.json()
+        if not isinstance(data, dict):raise ValueError('无效输入')
+        username, current = data.get('username'), data.get('current_password')
+        password = data.get('new_password', '')
+        if not isinstance(username, str) or not re.fullmatch(r'[\w.-]{3,32}', username):
+            return web.json_response({'error':'用户名需为 3–32 位字母、数字、下划线、点或连字符'}, status=400)
+        if not isinstance(current, str) or not 1 <= len(current) <= 1024:
+            return web.json_response({'error':'请填写当前密码'}, status=400)
+        if not isinstance(password, str) or (password and not 12 <= len(password) <= 128):
+            return web.json_response({'error':'新密码需为 12–128 位；留空则不修改'}, status=400)
+        if password and password != data.get('confirm_password'):
+            return web.json_response({'error':'两次新密码输入不一致'}, status=400)
+        async with self.auth_lock:
+            if not self.session(request):raise web.HTTPUnauthorized(text='请重新登录')
+            now = time.time()
+            recent = [t for t in self.account_attempts.get(request.remote, []) if now-t < 300]
+            self.account_attempts[request.remote] = recent
+            if len(recent) >= 5:
+                return web.json_response({'error':'当前密码验证次数过多，请 5 分钟后重试'}, status=429)
+            match = await asyncio.to_thread(password_hash, current, self.config['password_salt'])
+            if not hmac.compare_digest(match, self.config['password_hash']):
+                recent.append(now)
+                return web.json_response({'error':'当前密码不正确'}, status=403)
+            if username == self.config['username'] and not password:
+                return web.json_response({'error':'账号信息没有变化'}, status=400)
+            salt = secrets.token_hex(16) if password else self.config['password_salt']
+            hashed = await asyncio.to_thread(password_hash, password, salt) if password else self.config['password_hash']
+            # 只更新账号字段，保留磁盘中的部署配置；临时文件与原子替换避免半写入。
+            config = json.loads(self.config_path.read_text())
+            config.update(username=username, password_salt=salt, password_hash=hashed)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w', dir=self.config_path.parent, prefix='.config-', delete=False) as f:
+                    temporary = Path(f.name)
+                    os.chmod(f.name, 0o600)
+                    json.dump(config, f, indent=2)
+                    f.flush();os.fsync(f.fileno())
+                os.replace(temporary, self.config_path)
+            except OSError:
+                return web.json_response({'error':'账号配置保存失败，请检查数据目录写入权限与磁盘空间'}, status=500)
+            finally:
+                if temporary:
+                    with contextlib.suppress(OSError):temporary.unlink(missing_ok=True)
+            self.config.update(username=username, password_salt=salt, password_hash=hashed)
+            self.store.db.execute('DELETE FROM sessions')
+            self.store.db.execute('DELETE FROM tickets')
+            self.store.audit('account_update')
+            self.store.db.commit()
+            self.account_attempts.pop(request.remote, None)
+            self.attempts.clear()
+            # 初始密码文件已经失效，避免用户误用或继续保留旧密码。
+            with contextlib.suppress(OSError):(self.store.directory/'initial-login.txt').unlink(missing_ok=True)
+            sockets = [ws for group in self.proxy_sockets.values() for ws in list(group)]
+        await asyncio.gather(*(ws.close(code=1008, message=b'Account updated') for ws in sockets), return_exceptions=True)
+        response = web.json_response({'ok':True,'username':username,'reauthenticate':True})
+        response.del_cookie('baotaer_session', path='/')
+        return response
 
     async def logout(self, request):
         token=self.session(request)['token']
@@ -279,6 +345,7 @@ class Cloud:
         app.router.add_get('/api/health',health)
         app.router.add_post('/api/login',self.login)
         app.router.add_get('/api/me',self.me)
+        app.router.add_put('/api/account',self.update_account)
         app.router.add_post('/api/logout',self.logout)
         app.router.add_get('/api/nodes',self.nodes)
         app.router.add_post('/api/nodes',self.save_node)
