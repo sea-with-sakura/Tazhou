@@ -5,7 +5,7 @@
 <p align="center">多台服务器，一个工作台。</p>
 <p align="center">An independent, self-hosted operations workspace for BT Panel.</p>
 <p align="center">
-  <a href="https://github.com/sea-with-sakura/baotaer/actions/workflows/tests.yml"><img src="https://github.com/sea-with-sakura/baotaer/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/sea-with-sakura/Tazhou/actions/workflows/tests.yml"><img src="https://github.com/sea-with-sakura/Tazhou/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/Deploy-Docker%20Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose">
 </p>
@@ -49,8 +49,8 @@
 需要 Docker Engine 和 Docker Compose。
 
 ```bash
-git clone https://github.com/sea-with-sakura/baotaer.git
-cd baotaer
+git clone https://github.com/sea-with-sakura/Tazhou.git
+cd Tazhou
 cp .env.example .env
 ```
 
@@ -90,8 +90,8 @@ docker compose exec baotaer cat /app/data/initial-login.txt
 需要 Python 3.11+。
 
 ```bash
-git clone https://github.com/sea-with-sakura/baotaer.git
-cd baotaer
+git clone https://github.com/sea-with-sakura/Tazhou.git
+cd Tazhou
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python scripts/bootstrap.py --origin https://baota.example.com
