@@ -1,0 +1,15 @@
+.venv/
+data/
+__pycache__/
+*.pyc
+api信息.txt
+.env
+.env.*
+!.env.example
+backups/
+smtp.txt
+*.db
+*.db-wal
+*.db-shm
+.pytest_cache/
+.DS_Store

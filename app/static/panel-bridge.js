@@ -1,0 +1,17 @@
+/* 仅改写浏览器请求 URL，保留文件管理传递的服务器磁盘路径。 */
+(()=>{'use strict';const prefix=document.currentScript.dataset.prefix;
+const map=u=>{if(typeof u!=='string')return u;try{const x=new URL(u,location.href);if(x.origin!==location.origin)return u;if(/^\/panel\/\d+\//.test(x.pathname)||['/static/panel-bridge.js','/static/enter.js'].includes(x.pathname))return u;return prefix+x.pathname.slice(1)+x.search+x.hash}catch{return u}};
+const fetch0=window.fetch;window.fetch=function(input,init){if(input instanceof Request){const mapped=map(input.url);if(mapped!==input.url)input=new Request(mapped,input)}else input=map(String(input));return fetch0.call(this,input,init)};
+const open0=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(method,url,...args){return open0.call(this,method,map(String(url)),...args)};
+for(const key of ['WebSocket','EventSource','Worker','SharedWorker']){const Native=window[key];if(!Native)continue;window[key]=new Proxy(Native,{construct(target,args){let value=String(args[0]);if(key==='WebSocket'){value=value.replace(/^ws:/,'http:').replace(/^wss:/,'https:');value=map(value);value=new URL(value,location.href).href.replace(/^http:/,'ws:').replace(/^https:/,'wss:')}else value=map(value);return Reflect.construct(target,[value,...args.slice(1)])}})}
+for(const key of ['pushState','replaceState']){const original=history[key];history[key]=function(state,title,url){return original.call(this,state,title,url==null?url:map(String(url)))}}
+const winopen=window.open;window.open=function(url,...args){return winopen.call(this,map(url),...args)};
+for(const [Type,prop] of [[HTMLScriptElement,'src'],[HTMLImageElement,'src'],[HTMLIFrameElement,'src'],[HTMLAnchorElement,'href'],[HTMLLinkElement,'href'],[HTMLFormElement,'action'],[HTMLSourceElement,'src'],[HTMLVideoElement,'src']]){const d=Object.getOwnPropertyDescriptor(Type.prototype,prop);if(d?.set)Object.defineProperty(Type.prototype,prop,{...d,set(v){d.set.call(this,map(String(v)))}})}
+const setAttribute=Element.prototype.setAttribute;Element.prototype.setAttribute=function(k,v){return setAttribute.call(this,k,['src','href','action','poster'].includes(k.toLowerCase())?map(String(v)):v)};
+const scan=root=>{if(root.nodeType!==1)return;for(const el of [root,...root.querySelectorAll('[src],[href],[action],[poster]')])for(const key of ['src','href','action','poster']){const val=el.getAttribute(key);if(val){const next=map(val);if(next!==val)setAttribute.call(el,key,next)}}};
+new MutationObserver(records=>{for(const record of records){if(record.type==='attributes')scan(record.target);else for(const node of record.addedNodes)scan(node)}}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','href','action','poster']});
+document.addEventListener('click',e=>{const a=e.target.closest?.('a[href]');if(a)a.href=map(a.getAttribute('href'))},true);
+document.addEventListener('submit',e=>{if(e.target.action)e.target.action=map(e.target.action)},true);
+// JS 写 Cookie 时也限制到当前节点路径，避免节点之间的 CSRF Cookie 串台。
+const cookie=Object.getOwnPropertyDescriptor(Document.prototype,'cookie');if(cookie?.set)Object.defineProperty(document,'cookie',{get(){return cookie.get.call(document)},set(v){let text=String(v).replace(/;\s*domain=[^;]*/ig,'');if(/;\s*path=/i.test(text))text=text.replace(/(;\s*path=)([^;]*)/i,(_,a,b)=>a+(b.startsWith(prefix)?b:prefix+b.replace(/^\//,'')));else text+='; path='+prefix;cookie.set.call(document,text)}});
+})();

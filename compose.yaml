@@ -1,0 +1,19 @@
+services:
+  baotaer:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${BAOTAER_BIND_ADDRESS:-127.0.0.1}:${BAOTAER_PORT:-12500}:12500"
+    environment:
+      BAOTAER_PUBLIC_ORIGIN: ${BAOTAER_PUBLIC_ORIGIN:-http://127.0.0.1:12500}
+    volumes:
+      - baotaer_data:/app/data
+      - baotaer_backups:/app/backups
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  baotaer_data:
+  baotaer_backups:

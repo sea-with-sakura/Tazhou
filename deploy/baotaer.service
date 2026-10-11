@@ -1,0 +1,25 @@
+[Unit]
+Description=Baotaer multi-server control center
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=baotaer
+Group=baotaer
+WorkingDirectory=/opt/baotaer
+ExecStart=/opt/baotaer/.venv/bin/python -m app.server
+Environment=BAOTAER_DATA=/opt/baotaer/data
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/baotaer/data
+ProtectHome=read-only
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

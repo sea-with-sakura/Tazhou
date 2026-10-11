@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.env
+.env.*
+!.env.example
+data
+backups
+__pycache__
+**/__pycache__
+*.pyc
+*.db
+*.db-*
+smtp.txt
+api信息.txt
+tests

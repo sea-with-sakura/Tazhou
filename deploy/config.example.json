@@ -1,0 +1,10 @@
+{
+  "username": "admin",
+  "password_salt": "由初始化程序生成",
+  "password_hash": "由初始化程序生成，不要填写明文密码",
+  "public_origin": "https://baota.example.com",
+  "bind": "127.0.0.1",
+  "port": 12500,
+  "interval": 30,
+  "retention_days": 30
+}
