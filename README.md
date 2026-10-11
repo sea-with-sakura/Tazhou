@@ -25,8 +25,6 @@
 
 ## 界面预览
 
-真实部署界面截图；节点名称、分组、面板地址与账号信息已脱敏。
-
 ![塔舟服务器工作台](assets/screenshots/overview.png)
 
 <details>
