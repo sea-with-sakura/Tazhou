@@ -20,13 +20,13 @@ def frame(title, subtitle, content, origin, color='#2563eb'):
     url = origin if urlsplit(origin).scheme in ('http', 'https') else ''
     safe_url = escape(url, quote=True)
     button = f'<a href="{safe_url}" style="display:inline-block;background:#1967d2;color:#ffffff;text-decoration:none;padding:13px 30px;border-radius:28px;font-size:15px;font-weight:600">查看告警详情</a>' if url else ''
-    fallback = f'<p style="margin:25px 0 0;font-size:12px;line-height:1.8;color:#80868b">也可通过云控入口查看机器状态<br><a href="{safe_url}" style="color:#1967d2;text-decoration:none;word-break:break-all">{escape(url)}</a></p>' if url else ''
+    fallback = f'<p style="margin:25px 0 0;font-size:12px;line-height:1.8;color:#80868b">也可通过塔舟入口查看机器状态<br><a href="{safe_url}" style="color:#1967d2;text-decoration:none;word-break:break-all">{escape(url)}</a></p>' if url else ''
     return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#ffffff;color:#202124;font-family:Arial,'Microsoft YaHei',sans-serif">
 <div style="display:none;max-height:0;overflow:hidden">{escape(title)} · {escape(subtitle)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff"><tr><td align="center" style="padding:40px 16px 24px">
 <table role="presentation" width="624" cellpadding="0" cellspacing="0" style="width:100%;max-width:624px;border:1px solid #dadce0;border-radius:10px;background:#ffffff">
-<tr><td align="center" style="padding:40px 24px 26px"><div style="font-size:21px;font-weight:600;letter-spacing:1px;color:#1967d2">宝塔<span style="color:#5f6368;font-weight:400">云控</span></div><h1 style="margin:26px 0 12px;font-size:27px;font-weight:400;line-height:1.5;color:#202124">{escape(title)}</h1><div style="font-size:15px;line-height:1.7;color:#5f6368;word-break:break-word">{escape(subtitle)}</div></td></tr>
+<tr><td align="center" style="padding:40px 24px 26px"><div style="font-size:21px;font-weight:600;letter-spacing:1px;color:#1967d2">塔舟<span style="color:#5f6368;font-size:14px;font-weight:400;letter-spacing:2px"> / TAZHOU</span></div><h1 style="margin:26px 0 12px;font-size:27px;font-weight:400;line-height:1.5;color:#202124">{escape(title)}</h1><div style="font-size:15px;line-height:1.7;color:#5f6368;word-break:break-word">{escape(subtitle)}</div></td></tr>
 <tr><td style="padding:0 24px"><div style="border-top:1px solid #dadce0"></div></td></tr>
 <tr><td style="padding:24px">{content}</td></tr>
 <tr><td align="center" style="padding:8px 24px 36px">{button}{fallback}</td></tr>
@@ -42,7 +42,7 @@ def alert_html(rows, now, origin):
     names = '、'.join(dict.fromkeys(payload['node_name'] for row, kind, payload in rows))
     subtitle = names if connection else f'{len(rows)} 项资源事件 · {names}'
     if connection:
-        description = '云控已重新连接到以下机器的面板，连续采集成功。你可以查看机器的最新状态。' if recovered else '云控暂时无法连接以下机器的面板。请检查机器网络、面板服务及 API 访问状态。'
+        description = '塔舟已重新连接到以下机器的面板，连续采集成功。你可以查看机器的最新状态。' if recovered else '塔舟暂时无法连接以下机器的面板。请检查机器网络、面板服务及 API 访问状态。'
     else:
         description = '以下资源指标已恢复至安全范围。' if recovered else '以下资源指标持续超过设定阈值，请查看详情并及时处理。'
     sections = [f'<p style="margin:0 0 24px;text-align:center;font-size:15px;line-height:1.9;color:#3c4043">{description}</p>']

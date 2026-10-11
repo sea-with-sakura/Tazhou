@@ -1,6 +1,19 @@
-# Baotaer
+<p align="center">
+  <img src="app/static/logo.svg" width="80" height="80" alt="塔舟 Tazhou 标志">
+</p>
+<h1 align="center">塔舟 · Tazhou</h1>
+<p align="center">多台服务器，一个工作台。</p>
+<p align="center">An independent, self-hosted operations workspace for BT Panel.</p>
+<p align="center">
+  <a href="https://github.com/sea-with-sakura/baotaer/actions/workflows/tests.yml"><img src="https://github.com/sea-with-sakura/baotaer/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/Deploy-Docker%20Compose-2496ED?logo=docker&logoColor=white" alt="Docker Compose">
+</p>
 
-自托管的宝塔多服务器管理平台。一个入口查看服务器状态、进入完整面板，并通过邮件接收掉线、恢复和资源告警。
+塔舟是面向宝塔面板的独立、自托管运维工作台。一个入口查看服务器状态、进入完整面板，并接收掉线、恢复和资源告警。
+
+> 本项目为独立第三方项目，与宝塔／堡塔官方无隶属或背书关系。「宝塔面板」「BT Panel」仅用于说明兼容对象。
+
 
 ## 功能
 
@@ -41,7 +54,7 @@ docker compose exec baotaer cat /app/data/initial-login.txt
 
 ## 开始使用
 
-1. 在宝塔面板开启 API，允许 Baotaer 服务器的实际出口 IP。
+1. 在宝塔面板开启 API，允许塔舟服务器的实际出口 IP。
 2. 在「服务器管理」添加面板地址、API 密钥和安全入口；支持原生临时授权的面板可启用免登录。
 3. 在「告警中心 → 邮件通道」配置 SMTP，发送测试邮件并启用通知。
 4. 在「告警规则」调整阈值；下方设置重复提醒方式和恢复通知。

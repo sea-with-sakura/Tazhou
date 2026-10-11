@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">塔舟 Tazhou</title>
+  <desc id="desc">A blue sail above a connected three-node hull.</desc>
+  <rect width="64" height="64" rx="16" fill="#1767E8"/>
+  <path d="M31 12V38H15L31 12Z" fill="white"/>
+  <path d="M35 18L49 38H35V18Z" fill="#8CE5F3"/>
+  <path d="M16 44L25 50H41L49 44" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="16" cy="44" r="3" fill="white"/>
+  <circle cx="33" cy="50" r="3" fill="white"/>
+  <circle cx="49" cy="44" r="3" fill="white"/>
+</svg>

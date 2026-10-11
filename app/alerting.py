@@ -347,7 +347,7 @@ class Alerting:
         self.store.db.execute('UPDATE alert_incidents SET muted_until=? WHERE id=?', (now + minutes * 60 if minutes else 0, incident_id));self.store.db.commit()
 
     def _message(self, rows, now):
-        lines = ['宝塔云控 · 服务器告警', '时间：' + timestamp(now) + ' 北京时间（UTC+8）', '']
+        lines = ['塔舟 · 服务器告警', '时间：' + timestamp(now) + ' 北京时间（UTC+8）', '']
         for row, kind in rows:
             p = json.loads(row['value'])
             severity = '严重' if row['severity'] == 'critical' else '警告'
@@ -358,15 +358,15 @@ class Alerting:
                           f'超限开始：{timestamp(row["opened_at"])}', p.get('detail') or ''])
             if p.get('threshold') is not None:lines.append(f'触发阈值：≥ {p["threshold"]}' + (' 倍 / 核' if row['metric'] == 'load' else '%'))
             lines.append('')
-        lines.extend(['打开云控查看告警详情：' + self.origin, '此邮件由你配置的 SMTP 通道发送。'])
-        subject = f'[宝塔云控] {len(rows)} 项告警更新' + (' · 严重' if any(r['severity'] == 'critical' and k != 'resolved' for r, k in rows) else '')
+        lines.extend(['打开塔舟查看告警详情：' + self.origin, '此邮件由你配置的 SMTP 通道发送。'])
+        subject = f'[塔舟] {len(rows)} 项告警更新' + (' · 严重' if any(r['severity'] == 'critical' and k != 'resolved' for r, k in rows) else '')
         if all(r['metric'] == 'connection' for r, k in rows):
             restored = all(k == 'resolved' for r, k in rows)
             names = '、'.join(dict.fromkeys(json.loads(r['value'])['node_name'] for r, k in rows))
-            subject = '[宝塔云控] ' + ('机器恢复在线' if restored else '机器掉线告警') + ' · ' + names
+            subject = '[塔舟] ' + ('机器恢复在线' if restored else '机器掉线告警') + ' · ' + names
             subject = subject.replace('\r', ' ').replace('\n', ' ')
             if len(subject) > 180:subject = subject[:177] + '…'
-        elif all(k == 'resolved' for r, k in rows):subject = f'[宝塔云控] {len(rows)} 项资源告警已恢复'
+        elif all(k == 'resolved' for r, k in rows):subject = f'[塔舟] {len(rows)} 项资源告警已恢复'
         html = alert_html([(r, k, json.loads(r['value'])) for r, k in rows], now, self.origin)
         return subject, MailBody('\n'.join(lines), html)
 
@@ -423,7 +423,7 @@ class Alerting:
             if not smtp_ready(smtp):raise ValueError('请先保存完整 SMTP 配置')
             now = time.time()
             try:
-                await asyncio.to_thread(self.sender, smtp, '[宝塔云控] SMTP 测试邮件', MailBody('这是一封 SMTP 配置测试邮件。\n云控入口：' + self.origin, frame('邮件通道测试', timestamp(now) + ' · HTML 邮件预览', '<p style="font-size:16px;line-height:1.9">收到此邮件说明邮件通道可用。机器掉线使用醒目的红色通知，恢复在线使用绿色通知，并分别发送；资源告警另外汇总。</p>', self.origin)))
+                await asyncio.to_thread(self.sender, smtp, '[塔舟] SMTP 测试邮件', MailBody('这是一封 SMTP 配置测试邮件。\n工作台入口：' + self.origin, frame('邮件通道测试', timestamp(now) + ' · HTML 邮件预览', '<p style="font-size:16px;line-height:1.9">收到此邮件说明邮件通道可用。机器掉线使用醒目的红色通知，恢复在线使用绿色通知，并分别发送；资源告警另外汇总。</p>', self.origin)))
             except Exception as exc:
                 error = safe_error(exc)
                 self.store.db.execute('INSERT INTO alert_deliveries(ts,kind,status,count,error) VALUES(?,?,?,?,?)', (now, 'test', 'failed', 1, error));self.store.db.commit()
