@@ -70,6 +70,13 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.put('/api/account',json=self.data,headers=self.headers)).status,429)
         self.assertEqual(self.cloud.config['username'],'admin')
 
+    async def test_password_minimum_is_six_characters(self):
+        for password, expected in [('12345',400),('123456',200)]:
+            response=await self.client.put('/api/account',json={**self.data,'new_password':password,'confirm_password':password},headers=self.headers)
+            self.assertEqual(response.status,expected)
+        response=await self.client.post('/api/login',json={'username':'operator','password':'123456'})
+        self.assertEqual(response.status,200)
+
     async def test_atomic_write_failure_preserves_account_sessions_and_cleans_temporary_file(self):
         with patch('app.server.os.replace',side_effect=OSError('write failed')):
             response=await self.client.put('/api/account',json=self.data,headers=self.headers)

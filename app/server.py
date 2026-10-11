@@ -175,8 +175,8 @@ class Cloud:
             return web.json_response({'error':'用户名需为 3–32 位字母、数字、下划线、点或连字符'}, status=400)
         if not isinstance(current, str) or not 1 <= len(current) <= 1024:
             return web.json_response({'error':'请填写当前密码'}, status=400)
-        if not isinstance(password, str) or (password and not 12 <= len(password) <= 128):
-            return web.json_response({'error':'新密码需为 12–128 位；留空则不修改'}, status=400)
+        if not isinstance(password, str) or (password and not 6 <= len(password) <= 128):
+            return web.json_response({'error':'新密码需为 6–128 位；留空则不修改'}, status=400)
         if password and password != data.get('confirm_password'):
             return web.json_response({'error':'两次新密码输入不一致'}, status=400)
         async with self.auth_lock:
