@@ -307,7 +307,7 @@ class Cloud:
 
     async def alert_mute(self, request):
         try:
-            self.alerting.mute(int(request.match_info['id']), (await request.json()).get('minutes', 60))
+            self.alerting.mute(int(request.match_info['id']), (await request.json()).get('minutes'))
         except ValueError as e:
             return web.json_response({'error': str(e)}, status=400)
         self.store.audit('alert_mute', detail='静默设置已更新')

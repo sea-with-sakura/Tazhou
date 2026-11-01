@@ -72,3 +72,5 @@ body.panel-mode{overflow:hidden;background:#fff}
 
 #account-dialog{width:min(580px,calc(100vw - 24px))}.account b,.profile-panel strong{display:block;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){#account-settings{min-width:40px;padding:6px}#account-settings span{display:none}.console-top .workbench{display:none}}
+
+.alert-mute-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex-shrink:0}@media(max-width:700px){.alert-mute-actions{align-self:flex-end;max-width:100%;gap:6px}}

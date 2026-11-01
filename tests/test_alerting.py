@@ -185,6 +185,42 @@ class AlertTest(unittest.IsolatedAsyncioTestCase):
         self.sample(0, cpu=99);self.sample(30, cpu=99);await self.engine.deliver(self.base+30);self.assertFalse(self.sent)
         self.enable();await self.engine.deliver(self.base+40);self.assertEqual(len(self.sent),1)
 
+    async def test_forever_mute_survives_restart_recovery_and_new_event_is_not_muted(self):
+        self.enable();self.sample(0,cpu=99);self.sample(30,cpu=99)
+        await self.engine.deliver(self.base+30)
+        event=self.engine.dashboard()['active'][0]
+        self.engine.mute(event['id'],-1,self.base+30)
+        self.engine=Alerting(self.store,sender=lambda smtp,subject,body:self.sent.append((subject,body)))
+        self.assertTrue(self.engine.dashboard()['active'][0]['muted_forever'])
+        self.sample(86430,cpu=99);await self.engine.deliver(self.base+86430)
+        self.assertEqual(len(self.sent),1)
+        self.sample(86460,cpu=20);self.sample(86490,cpu=20)
+        await self.engine.deliver(self.base+86490)
+        self.assertEqual(self.engine.dashboard()['active'],[])
+        self.assertEqual(self.engine.dashboard()['history'][0]['status'],'resolved')
+        self.assertEqual(len(self.sent),1)
+        self.sample(86520,cpu=99);self.sample(86550,cpu=99)
+        active=self.engine.dashboard()['active'][0]
+        self.assertNotEqual(active['id'],event['id']);self.assertFalse(active['muted_forever'])
+        await self.engine.deliver(self.base+86550);self.assertEqual(len(self.sent),2)
+
+    async def test_24_hour_mute_expiry_switch_and_unmute(self):
+        self.enable();self.sample(0,cpu=99);self.sample(30,cpu=99)
+        event=self.engine.dashboard()['active'][0]
+        self.engine.mute(event['id'],1440,self.base+30)
+        self.assertEqual(self.engine.dashboard()['active'][0]['muted_until'],self.base+30+86400)
+        self.sample(86429,cpu=99);await self.engine.deliver(self.base+86429)
+        self.assertEqual(self.sent,[])
+        self.sample(86430,cpu=99);await self.engine.deliver(self.base+86430)
+        self.assertEqual(len(self.sent),1)
+        self.engine.mute(event['id'],-1,self.base+86430)
+        self.assertTrue(self.engine.dashboard()['active'][0]['muted_forever'])
+        self.engine.mute(event['id'],0,self.base+86430)
+        self.assertFalse(self.engine.dashboard()['active'][0]['muted_forever'])
+        self.assertEqual(self.engine.dashboard()['active'][0]['muted_until'],0)
+        for value in [-2,1441,True,None,'1440']:
+            with self.assertRaises(ValueError):self.engine.mute(event['id'],value)
+
     async def test_failed_smtp_backoff_does_not_mark_sent_or_leak_secret(self):
         self.enable();self.sample(0, cpu=99);self.sample(30, cpu=99)
         self.engine.sender=lambda *args:(_ for _ in ()).throw(smtplib.SMTPAuthenticationError(535,b'secret-auth-code server response'))
@@ -265,6 +301,24 @@ class AlertApiTest(unittest.IsolatedAsyncioTestCase):
         (p/'config.json').write_text(json.dumps({'username':'admin','password_salt':salt,'password_hash':password_hash('testing-password',salt)}))
         self.cloud=Cloud(p);self.client=TestClient(TestServer(self.cloud.app(False)));await self.client.start_server()
     async def asyncTearDown(self):await self.client.close();self.tmp.cleanup()
+    async def test_mute_modes_require_auth_csrf_and_explicit_valid_duration(self):
+        self.assertEqual((await self.client.post('/api/alerts/1/mute',json={'minutes':-1})).status,401)
+        r=await self.client.post('/api/login',json={'username':'admin','password':'testing-password'})
+        headers={'X-CSRF-Token':(await r.json())['csrf']}
+        node=self.cloud.store.add({'name':'测试','url':'http://node.invalid','api_key':'test-key'})
+        self.cloud.alerting.save_config({'rules':{'cpu':{'critical_for':30}}})
+        for stamp in [1000000,1000030]:
+            self.cloud.alerting.evaluate([{'id':node,'name':'测试','url':'http://node.invalid','status':'online','last_attempt':stamp,'metrics':{'cpu':99}}],stamp)
+        event=self.cloud.alerting.dashboard()['active'][0]
+        endpoint=f'/api/alerts/{event["id"]}/mute'
+        self.assertEqual((await self.client.post(endpoint,json={'minutes':-1})).status,403)
+        for minutes in [-1,1440,0]:
+            self.assertEqual((await self.client.post(endpoint,json={'minutes':minutes},headers=headers)).status,200)
+            data=await (await self.client.get('/api/alerting')).json()
+            self.assertEqual(data['active'][0]['muted_forever'],minutes==-1)
+        for body in [{},{'minutes':True},{'minutes':-2},{'minutes':1441}]:
+            self.assertEqual((await self.client.post(endpoint,json=body,headers=headers)).status,400)
+
     async def test_auth_csrf_save_redaction_and_safe_test_error(self):
         self.assertEqual((await self.client.get('/api/alerting')).status,401)
         r=await self.client.post('/api/login',json={'username':'admin','password':'testing-password'});csrf=(await r.json())['csrf']

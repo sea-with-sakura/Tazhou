@@ -15,7 +15,7 @@
  <div id="alert-stats" class="alert-stats"></div>
  <div class="alert-board">
   <div class="alert-tabs" role="tablist" aria-label="告警中心栏目"><button role="tab" id="alert-tab-events" data-alert-tab="events" aria-controls="alert-events" aria-selected="true">当前告警</button><button role="tab" id="alert-tab-channel" data-alert-tab="channel" aria-controls="alert-channel" aria-selected="false" tabindex="-1">邮件通道</button><button role="tab" id="alert-tab-rules" data-alert-tab="rules" aria-controls="alert-rules" aria-selected="false" tabindex="-1">告警规则</button><button role="tab" id="alert-tab-history" data-alert-tab="history" aria-controls="alert-history" aria-selected="false" tabindex="-1">历史与投递</button></div>
-  <section id="alert-events" role="tabpanel" aria-labelledby="alert-tab-events"><div class="alert-section-title"><h2>当前触发事件</h2><span class="muted">默认重复提醒间隔 60 分钟</span></div><div id="alert-active-list"></div><p class="alert-note">静默只暂停该事件的邮件，监控与恢复判断继续运行。页面关闭后，后台仍持续检查。</p></section>
+  <section id="alert-events" role="tabpanel" aria-labelledby="alert-tab-events"><div class="alert-section-title"><h2>当前触发事件</h2><span class="muted">默认重复提醒间隔 60 分钟</span></div><div id="alert-active-list"></div><p class="alert-note">可持续静默或静默 24 小时，监控与恢复判断继续运行。静默仅作用于本次事件；恢复后再次触发会作为新事件通知。页面关闭和服务重启不影响已保存的静默设置。</p></section>
   <section id="alert-channel" role="tabpanel" aria-labelledby="alert-tab-channel" hidden>
    <form id="smtp-form"><div class="alert-section-title"><h2>SMTP 邮件通道</h2><label class="check switch-label"><input name="enabled" type="checkbox">启用邮件通知</label></div>
     <p class="alert-callout">填写邮箱服务提供的 SMTP 地址与授权码，保存后发送测试邮件。规则默认启用；邮件通知需配置通道并开启。</p>

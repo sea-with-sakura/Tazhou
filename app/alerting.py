@@ -23,6 +23,7 @@ DEFAULT_RULES = {
     'load': {'enabled': True, 'warning': 1.5, 'critical': 2, 'warning_for': 900, 'critical_for': 600, 'hysteresis': .2},
 }
 LABELS = {'connection': '面板连接异常', 'cpu': 'CPU 使用率', 'memory': '内存使用率', 'disk': '磁盘空间使用率', 'load': '5 分钟负载 / CPU 核心数'}
+MUTE_FOREVER = -1
 DEFAULTS = {'smtp': {'enabled': False, 'host': '', 'port': 465, 'security': 'ssl', 'username': '', 'password': '', 'sender': '', 'recipients': []},
             'rules': DEFAULT_RULES, 'repeat_minutes': 60, 'recovery_seconds': 60, 'send_recovery': True,
             'repeat_schedule': {'mode': 'interval', 'daily_time': '09:00'},
@@ -325,6 +326,7 @@ class Alerting:
         result.update(json.loads(result.pop('value')))
         state = self._state(result['alert_key'])
         result['observed'] = bool(state.get('observed')) if result['status'] == 'firing' else True
+        result['muted_forever'] = result['muted_until'] == MUTE_FOREVER
         return result
 
     def dashboard(self):
@@ -341,10 +343,11 @@ class Alerting:
 
     def mute(self, incident_id, minutes, now=None):
         now = time.time() if now is None else now
-        if not isinstance(minutes, int) or isinstance(minutes, bool) or not 0 <= minutes <= 1440:raise ValueError('静默时间范围为 0–1440 分钟')
+        if not isinstance(minutes, int) or isinstance(minutes, bool) or not -1 <= minutes <= 1440:raise ValueError('静默时间无效：-1 为持续静默，0 为解除，最长 1440 分钟')
         row = self.store.db.execute("SELECT id FROM alert_incidents WHERE id=? AND status='firing'", (incident_id,)).fetchone()
         if not row:raise ValueError('告警已结束或不存在')
-        self.store.db.execute('UPDATE alert_incidents SET muted_until=? WHERE id=?', (now + minutes * 60 if minutes else 0, incident_id));self.store.db.commit()
+        until = MUTE_FOREVER if minutes == MUTE_FOREVER else now + minutes * 60 if minutes else 0
+        self.store.db.execute('UPDATE alert_incidents SET muted_until=? WHERE id=?', (until, incident_id));self.store.db.commit()
 
     def _message(self, rows, now):
         lines = ['塔舟 · 服务器告警', '时间：' + timestamp(now) + ' 北京时间（UTC+8）', '']
@@ -380,7 +383,7 @@ class Alerting:
             if not smtp['enabled'] or not smtp_ready(smtp) or now < retry.get('next_retry', 0):return
             rows = []
             for row in self.store.db.execute("SELECT * FROM alert_incidents WHERE status IN ('firing','resolved') ORDER BY id"):
-                if row['muted_until'] > now:continue
+                if row['muted_until'] == MUTE_FOREVER or row['muted_until'] > now:continue
                 if row['status'] == 'resolved':
                     if config['send_recovery'] and row['last_notified'] and not row['recovery_sent']:rows.append((row, 'resolved'))
                     continue
